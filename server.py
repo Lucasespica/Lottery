@@ -5,7 +5,7 @@ from datetime import datetime
 
 HOST = '0.0.0.0'
 PORTA = 5000
-INTERVALO_SORTEIO = 10 #mudar depois
+INTERVALO_SORTEIO = 60
 
 
 class SessaoLoteria:

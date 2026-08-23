@@ -32,10 +32,17 @@ def main(): #Execução
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((host, porta))
+    arquivo = sock.makefile('r', encoding='utf-8', newline='\n') #Entender pq do arquivo
 
     msg1 = arquivo.readline() #Aguarda ":CONECTADO!!"
     print(msg1.rstrip('\n')) #Imprime boas-vindas
     print("Comandos: :inicio N | :fim N | :qtd N | numeros separados por espaco para apostar | :sair para encerrar")
+
+    #Cria e inicia as duas threads
+    t1 = threading.Thread(target=thread_teclado, args=(sock,))
+    t2 = threading.Thread(target=thread_recebe, args=(arquivo,))
+    t1.start()
+    t2.start()
 
     t1.join() #usuario digitou ":sair" ou fechou o terminal
     try:

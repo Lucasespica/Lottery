@@ -52,6 +52,6 @@ Aposta 2 [1, 2, 3, 4, 5] -> acertos: [5] (1)
 ```
 
 ## Autores
-Guilherme Eid Godoy
-Lucas Espica Rezende
-Rafael Martiniano Nogueira Filho
+- Guilherme Eid Godoy
+- Lucas Espica Rezende
+- Rafael Martiniano Nogueira Filho
