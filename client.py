@@ -1,7 +1,6 @@
 import socket
 import threading
 import sys
-from datetime import datetime
 
 HOST = "127.0.0.1"
 PORT = 5000
@@ -46,10 +45,11 @@ def receberServer(client):
 
 def main():
     client = conectarCliente() # se a conexão for bem sucedida, imprimir o horário dela
+    horario = client.recv(1024).decode('utf-8')
+    print(horario)
 
-    horario = datetime.now().strftime("%H:%M:%S")   
-    print("------------------------------------------------------------")
-    print(f"{horario}: Conectado!\n Você pode:")
+    print("\n------------------------------------------------------------")
+    print("Você pode:")
     print(" • Configurar: :inicio <num> | :fim <num> | :qtd <num>")
     print(" • Apostar: Digite os números separados por espaço (ex: 5 12 30)")
     print("------------------------------------------------------------")
