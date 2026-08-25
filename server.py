@@ -9,24 +9,26 @@ PORT = 5000 # Portas a cima de 1023 são sem privilégio, ou seja, podem ser ace
 # Estado de cada cliente: connection -> {"inicio":0, "fim":100, "qtd":5, "apostas":[...]}
 clientes = {}
 lock = threading.Lock()   # Evita race condition
-
+INTERVALO = 60
 
 # Cria thread que recebe dados do cliente (Lê do socket e usa como input para processamento) --> loop infinito de recebimento
 def lerCliente(connection, address):
-    # recebe dados enviados do cliente -> recv = receive é bloqueante e espera que aja alguma mensagem
+    # recebe dados enviados do cliente -> recv = receive é bloqueante e espera que haja alguma mensagem
     while True:
         data = connection.recv(1024).decode('utf-8')
         if not data:
             print(f" Cliente {address} desconectou.")
-            break
+            break # sai do loop
 
-        data = data.strip()
+        data = data.strip() # limpa espaços antes e depois do texto, sem mexer nos espaços do meio
         if not data:
-            continue
+            continue # pula a iteração atual
 
-        # Mensagens que começam com ":" são comandos de configuração da loteria (:inicio, :fim, :qtd)
+        # Mensagens que começam com ":" são comandos de configuração da loteria (:inicio 1, :fim 10, :qtd 3)
         if data.startswith(":"):
             partes = data.split()
+            if len(partes) < 2:
+                    continue
             comando = partes[0]
 
             try:
@@ -53,7 +55,9 @@ def lerCliente(connection, address):
         else:
             partes = data.split()
             try:
-                numeros = [int(p) for p in partes]
+                numeros = []
+                for p in partes:
+                    numeros.append(int(p)) # guarda todos os inteiros numa nova lista
             except ValueError:
                 print(f"Aposta inválida de {address}: {data}")
                 continue
@@ -64,6 +68,9 @@ def lerCliente(connection, address):
 
             print(f"{address} apostou: {numeros}")
 
+    with lock:
+        if connection in clientes:
+            del clientes[connection]
     connection.close()
 
 
@@ -71,12 +78,50 @@ def lerCliente(connection, address):
 def enviarCliente(connection, address):
 
     while True:
-        time.sleep(10) # depois troca para 60, 10 para testes
+        time.sleep(INTERVALO) # depois troca para 60, 10 para testes
+
+        # Pega as configs atuais 
+        with lock:
+            if connection not in clientes:
+                break  # Cliente já desconectou, encerra thread de envio
+
+            inicio = clientes[connection]["inicio"]
+            fim = clientes[connection]["fim"]
+            qtd = clientes[connection]["qtd"]
+            apostas = list(clientes[connection]["apostas"])
+            # Zera a lista de apostas para o novo ciclo
+            clientes[connection]["apostas"].clear()
+    
+        # Valida se os numeros de apostas sao válidos para o total de numeros
+        tam = (fim - inicio) + 1
+        if tam < qtd or qtd <= 0:
+            msg_erro = f"\n Erro no sorteio: O intervalo [{inicio}, {fim}] não comporta {qtd} números distintos.\n"
+            try:
+                connection.send(msg_erro.encode('utf-8'))
+            except (ConnectionResetError, BrokenPipeError):
+                break
+            continue
+
+        # Realiza os sorteios 
+        sorteados = set(random.sample(range(inicio, fim + 1), qtd)) # de 'inicio' ao 'fim' pega 'qnd' numeros numa amostra de forma aleatória
+
+        # Manda mensagem pro cliente
+        msg_enviada = f"\n--- Sorteio: {sorted(list(sorteados))} ---\n"
+        if not apostas:
+            msg_enviada += "Sem apostas feitas neste ciclo.\n"
+        else:
+            # Percorre cada aposta individualmente (evita o erro do set)
+            for aposta in apostas:
+                acertos = set(aposta).intersection(sorteados)
+                msg_enviada += f"Aposta: {aposta} | Acertos ({len(acertos)}): {sorted(list(acertos))}\n"
+
         try:
-            connection.send(sorteados.encode('utf-8'))
-        except ConnectionResetError:
+            connection.send(msg_enviada.encode('utf-8'))
+        except (ConnectionResetError, BrokenPipeError):
             break
-        
+            
+                    
+
 
 # socket.AF_INET = para definir que vamos usar IPv4 e socket.SOCK_STREAM para dizer que é TCP
 # Com o with vc não precisa se preocupar em fechar o socket.close(), ele já gerencia no contexto.
@@ -109,7 +154,7 @@ def main():
                     "inicio": 0,
                     "fim": 100,
                     "qtd": 5,
-                    "apostas": []
+                    "apostas": [] # isso é uma lista de listas de numeros apostados
                 }
 
             # Quando se conectar, cria as threads de auxílio para ele

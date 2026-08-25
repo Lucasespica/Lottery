@@ -20,7 +20,7 @@ def conectarCliente():
 def enviarServer(client):
     while True:
         try:
-            mensagem = input("Digite para configurar (:) ou somente numeros para apostar: ")
+            mensagem = input()
             if mensagem.strip(): # se tiver mensagem
                 # Envia a mensagem codificada em bytes
                 client.send(mensagem.encode('utf-8'))
@@ -36,8 +36,7 @@ def receberServer(client):
     while True:
         data = client.recv(1024).decode('utf-8')
         if not data:
-            print("Conexão encerrada pelo servidor")
-            client.close()    
+            print("Conexão encerrada pelo servidor") 
             break
         print(data)
             
